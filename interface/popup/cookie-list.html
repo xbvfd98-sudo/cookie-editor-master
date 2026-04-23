@@ -104,6 +104,20 @@
             <div class="tooltip" role="tooltip">Export</div>
           </div>
         </button>
+        <div class="panel-section-footer-separator"></div>
+
+        <button
+          class="panel-section-footer-button"
+          id="profiles-button"
+          type="button"
+        >
+          <div>
+            <svg class="icon">
+              <use href="../sprites/solid.svg#users"></use>
+            </svg>
+            <div class="tooltip" role="tooltip">Profiles</div>
+          </div>
+        </button>
       </div>
     </div>
 
@@ -131,6 +145,49 @@
           <div>
             <svg class="icon"><use href="../sprites/solid.svg#save"></use></svg>
             <div class="tooltip" role="tooltip">Add</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel button-bar" id="button-bar-profiles">
+      <div class="panel-section panel-section-footer">
+        <button
+          class="panel-section-footer-button"
+          id="return-list-profiles"
+          type="button"
+        >
+          <div>
+            <svg class="icon">
+              <use href="../sprites/solid.svg#arrow-left"></use>
+            </svg>
+            <div class="tooltip" role="tooltip">Back</div>
+          </div>
+        </button>
+        <div class="panel-section-footer-separator"></div>
+
+        <button
+          class="panel-section-footer-button primary"
+          id="save-profile"
+          type="button"
+        >
+          <div>
+            <svg class="icon"><use href="../sprites/solid.svg#save"></use></svg>
+            <div class="tooltip" role="tooltip">Save</div>
+          </div>
+        </button>
+        <div class="panel-section-footer-separator"></div>
+
+        <button
+          class="panel-section-footer-button primary"
+          id="save-and-delete-profile"
+          type="button"
+        >
+          <div>
+            <svg class="icon">
+              <use href="../sprites/solid.svg#save"></use>
+            </svg>
+            <div class="tooltip" role="tooltip">Save &amp; Clear</div>
           </div>
         </button>
       </div>
@@ -405,6 +462,62 @@
         <button id="export-json" type="button">JSON</button>
         <button id="export-headerstring" type="button">Header String</button>
         <button id="export-netscape" type="button">Netscape</button>
+      </div>
+    </template>
+
+    <template id="tmp-profiles-panel">
+      <div id="profiles-panel">
+        <div class="profiles-header container">
+          <h2>Account Profiles</h2>
+          <span class="profiles-domain"></span>
+        </div>
+        <ul class="profiles-list"></ul>
+        <div class="profiles-empty container">
+          No saved profiles for this domain.
+        </div>
+      </div>
+    </template>
+
+    <template id="tmp-profile-item">
+      <li class="profile-item" data-profile-id="">
+        <span class="profile-name"></span>
+        <div class="profile-actions">
+          <button
+            class="profile-load"
+            type="button"
+            title="Load this profile"
+          >
+            <svg class="icon">
+              <use href="../sprites/solid.svg#sign-in-alt"></use>
+            </svg>
+          </button>
+          <button
+            class="profile-delete"
+            type="button"
+            title="Delete this profile"
+          >
+            <svg class="icon">
+              <use href="../sprites/solid.svg#trash"></use>
+            </svg>
+          </button>
+        </div>
+      </li>
+    </template>
+
+    <template id="tmp-profile-name-prompt">
+      <div id="profile-name-prompt" class="container">
+        <label for="profile-name-input">Profile Name</label>
+        <input
+          type="text"
+          id="profile-name-input"
+          placeholder="e.g. Account 1"
+        />
+        <div class="profile-prompt-actions">
+          <button id="profile-name-cancel" type="button">Cancel</button>
+          <button id="profile-name-confirm" type="button" class="primary">
+            Save
+          </button>
+        </div>
       </div>
     </template>
 
