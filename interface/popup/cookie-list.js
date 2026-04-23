@@ -10,6 +10,7 @@ import { NetscapeFormat } from '../lib/netscapeFormat.js';
 import { ExportFormats } from '../lib/options/exportFormats.js';
 import { OptionsHandler } from '../lib/optionsHandler.js';
 import { PermissionHandler } from '../lib/permissionHandler.js';
+import { ProfileHandler } from '../lib/profileHandler.js';
 import { ThemeHandler } from '../lib/themeHandler.js';
 import { CookieHandlerPopup } from './cookieHandlerPopup.js';
 
@@ -36,6 +37,7 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
     storageHandler,
     optionHandler
   );
+  const profileHandler = new ProfileHandler(storageHandler);
   const cookieHandler = window.isDevtools
     ? new CookieHandlerDevtools(browserDetector)
     : new CookieHandlerPopup(browserDetector);
@@ -375,6 +377,29 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
         showCookiesForTab();
       });
 
+    document
+      .getElementById('return-list-profiles')
+      .addEventListener('click', () => {
+        showCookiesForTab();
+      });
+
+    document.getElementById('profiles-button').addEventListener('click', () => {
+      if (disableButtons) {
+        return;
+      }
+      showProfilesPanel();
+    });
+
+    document.getElementById('save-profile').addEventListener('click', () => {
+      promptAndSaveProfile(false);
+    });
+
+    document
+      .getElementById('save-and-delete-profile')
+      .addEventListener('click', () => {
+        promptAndSaveProfile(true);
+      });
+
     containerCookie.addEventListener('submit', e => {
       e.preventDefault();
       saveCookieForm(e.target);
@@ -570,6 +595,7 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
     setPageTitle('Cookie-Editor');
     document.getElementById('button-bar-add').classList.remove('active');
     document.getElementById('button-bar-import').classList.remove('active');
+    document.getElementById('button-bar-profiles').classList.remove('active');
     document.getElementById('button-bar-default').classList.add('active');
     document.myThing = 'DarkSide';
     const domain = getDomainFromUrl(cookieHandler.currentTab.url);
@@ -684,6 +710,7 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
 
     document.getElementById('button-bar-add').classList.remove('active');
     document.getElementById('button-bar-import').classList.remove('active');
+    document.getElementById('button-bar-profiles').classList.remove('active');
     document.getElementById('button-bar-default').classList.remove('active');
     // Firefox can't request permissions from devTools due to
     // https://bugzilla.mozilla.org/show_bug.cgi?id=1796933
@@ -760,6 +787,7 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
 
     document.getElementById('button-bar-add').classList.remove('active');
     document.getElementById('button-bar-import').classList.remove('active');
+    document.getElementById('button-bar-profiles').classList.remove('active');
     document.getElementById('button-bar-default').classList.remove('active');
     if (containerCookie.firstChild) {
       if (containerCookie.firstChild.id === 'permission-impossible') {
@@ -1361,5 +1389,255 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
         document.body.classList.remove('button-bar-top');
       }
     });
+  }
+
+  /**
+   * Shows the profiles panel with the list of saved profiles for
+   * the current domain.
+   */
+  async function showProfilesPanel() {
+    const domain = getDomainFromUrl(cookieHandler.currentTab.url);
+    if (!domain) {
+      sendNotification('Cannot determine domain for this page.');
+      return;
+    }
+
+    setPageTitle('Cookie-Editor - Profiles');
+
+    const template = document.importNode(
+      document.getElementById('tmp-profiles-panel').content,
+      true
+    );
+    const panel = template.querySelector('#profiles-panel');
+    panel.querySelector('.profiles-domain').textContent = domain;
+
+    const profiles = await profileHandler.getProfilesForDomain(domain);
+    const profileIds = Object.keys(profiles);
+    const listEl = panel.querySelector('.profiles-list');
+    const emptyEl = panel.querySelector('.profiles-empty');
+
+    if (profileIds.length === 0) {
+      listEl.style.display = 'none';
+      emptyEl.style.display = 'block';
+    } else {
+      listEl.style.display = 'block';
+      emptyEl.style.display = 'none';
+
+      profileIds.forEach(id => {
+        const profile = profiles[id];
+        const itemTemplate = document.importNode(
+          document.getElementById('tmp-profile-item').content,
+          true
+        );
+        const li = itemTemplate.querySelector('.profile-item');
+        li.dataset.profileId = id;
+        li.querySelector('.profile-name').textContent = profile.name;
+
+        li.querySelector('.profile-load').addEventListener('click', () => {
+          loadProfile(domain, id);
+        });
+
+        li.querySelector('.profile-delete').addEventListener('click', () => {
+          deleteProfileFromList(domain, id);
+        });
+
+        listEl.appendChild(li);
+      });
+    }
+
+    disableButtons = true;
+    Animate.transitionPage(
+      containerCookie,
+      containerCookie.firstChild,
+      panel,
+      'left',
+      () => {
+        disableButtons = false;
+      },
+      optionHandler.getAnimationsEnabled()
+    );
+
+    document.getElementById('button-bar-default').classList.remove('active');
+    document.getElementById('button-bar-add').classList.remove('active');
+    document.getElementById('button-bar-import').classList.remove('active');
+    document.getElementById('button-bar-profiles').classList.add('active');
+  }
+
+  /**
+   * Shows a name prompt, then saves the current cookies as a profile.
+   * @param {boolean} deleteAfterSave If true, deletes browser cookies after
+   *     saving.
+   */
+  function promptAndSaveProfile(deleteAfterSave) {
+    const domain = getDomainFromUrl(cookieHandler.currentTab.url);
+    if (!domain) {
+      sendNotification('Cannot determine domain.');
+      return;
+    }
+
+    const template = document.importNode(
+      document.getElementById('tmp-profile-name-prompt').content,
+      true
+    );
+    const promptEl = template.querySelector('#profile-name-prompt');
+
+    disableButtons = true;
+    Animate.transitionPage(
+      containerCookie,
+      containerCookie.firstChild,
+      promptEl,
+      'left',
+      () => {
+        disableButtons = false;
+      },
+      optionHandler.getAnimationsEnabled()
+    );
+
+    document.getElementById('button-bar-profiles').classList.remove('active');
+
+    setTimeout(() => {
+      const input = document.getElementById('profile-name-input');
+      if (input) {
+        input.focus();
+      }
+
+      document
+        .getElementById('profile-name-cancel')
+        .addEventListener('click', () => {
+          showProfilesPanel();
+        });
+
+      document
+        .getElementById('profile-name-confirm')
+        .addEventListener('click', () => {
+          const nameInput = document.getElementById('profile-name-input');
+          const name = nameInput ? nameInput.value.trim() : '';
+          if (!name) {
+            sendNotification('Please enter a profile name.');
+            return;
+          }
+          doSaveProfile(domain, name, deleteAfterSave);
+        });
+
+      if (input) {
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('profile-name-confirm').click();
+          }
+        });
+      }
+    }, 50);
+  }
+
+  /**
+   * Saves cookies as a profile and optionally deletes them afterward.
+   * @param {string} domain
+   * @param {string} name
+   * @param {boolean} deleteAfterSave
+   */
+  function doSaveProfile(domain, name, deleteAfterSave) {
+    cookieHandler.getAllCookies(async function (cookies) {
+      if (!cookies || cookies.length === 0) {
+        sendNotification('No cookies to save.');
+        showProfilesPanel();
+        return;
+      }
+
+      const cookieData = cookies.map(c => ({
+        name: c.name,
+        value: c.value,
+        domain: c.domain,
+        path: c.path,
+        secure: c.secure,
+        httpOnly: c.httpOnly,
+        sameSite: c.sameSite,
+        expirationDate: c.expirationDate,
+        hostOnly: c.hostOnly,
+        session: c.session,
+        storeId: c.storeId,
+      }));
+
+      await profileHandler.saveProfile(domain, name, cookieData);
+      sendNotification('Profile "' + name + '" saved!');
+
+      if (deleteAfterSave) {
+        for (const cookie of cookies) {
+          removeCookie(cookie.name);
+        }
+        sendNotification('Cookies cleared. Ready for next account.');
+      }
+
+      showProfilesPanel();
+    });
+  }
+
+  /**
+   * Loads a saved profile: clears current cookies then restores the saved ones.
+   * @param {string} domain
+   * @param {string} profileId
+   */
+  async function loadProfile(domain, profileId) {
+    const profile = await profileHandler.getProfile(domain, profileId);
+    if (!profile) {
+      sendNotification('Profile not found.');
+      return;
+    }
+
+    cookieHandler.getAllCookies(function (currentCookies) {
+      let pending = currentCookies.length;
+
+      const restoreSaved = function () {
+        for (const cookie of profile.cookies) {
+          cookie.storeId = cookieHandler.currentTab.cookieStoreId;
+
+          if (cookie.sameSite && cookie.sameSite === 'unspecified') {
+            cookie.sameSite = null;
+          }
+
+          cookieHandler.saveCookie(
+            cookie,
+            getCurrentTabUrl(),
+            function (error) {
+              if (error) {
+                console.error('Failed to restore cookie', error);
+              }
+            }
+          );
+        }
+
+        sendNotification('Profile "' + profile.name + '" loaded!');
+
+        browserDetector.getApi().tabs.reload(cookieHandler.currentTab.id);
+        setTimeout(() => {
+          showCookiesForTab();
+        }, 500);
+      };
+
+      if (pending === 0) {
+        restoreSaved();
+        return;
+      }
+
+      for (const cookie of currentCookies) {
+        removeCookie(cookie.name, undefined, function () {
+          pending--;
+          if (pending <= 0) {
+            restoreSaved();
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * Deletes a profile from storage and refreshes the panel.
+   * @param {string} domain
+   * @param {string} profileId
+   */
+  async function deleteProfileFromList(domain, profileId) {
+    await profileHandler.deleteProfile(domain, profileId);
+    sendNotification('Profile deleted.');
+    showProfilesPanel();
   }
 })();
