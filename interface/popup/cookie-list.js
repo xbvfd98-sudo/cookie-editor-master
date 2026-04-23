@@ -10,6 +10,7 @@ import { NetscapeFormat } from '../lib/netscapeFormat.js';
 import { ExportFormats } from '../lib/options/exportFormats.js';
 import { OptionsHandler } from '../lib/optionsHandler.js';
 import { PermissionHandler } from '../lib/permissionHandler.js';
+import { ProfileHandler } from '../lib/profileHandler.js';
 import { ThemeHandler } from '../lib/themeHandler.js';
 import { CookieHandlerPopup } from './cookieHandlerPopup.js';
 
@@ -30,6 +31,7 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
   const permissionHandler = new PermissionHandler(browserDetector);
   const storageHandler = new GenericStorageHandler(browserDetector);
   const optionHandler = new OptionsHandler(browserDetector, storageHandler);
+  const profileHandler = new ProfileHandler(storageHandler);
   const themeHandler = new ThemeHandler(optionHandler);
   const adHandler = new AdHandler(
     browserDetector,
@@ -375,6 +377,26 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
         showCookiesForTab();
       });
 
+    document.getElementById('open-profiles').addEventListener('click', () => {
+      if (disableButtons) {
+        return;
+      }
+      showProfilesPanel();
+    });
+
+    document
+      .getElementById('return-list-profiles')
+      .addEventListener('click', () => {
+        showCookiesForTab();
+      });
+
+    document.getElementById('save-profile').addEventListener('click', () => {
+      if (disableButtons) {
+        return;
+      }
+      toggleProfileSavePane();
+    });
+
     containerCookie.addEventListener('submit', e => {
       e.preventDefault();
       saveCookieForm(e.target);
@@ -570,6 +592,7 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
     setPageTitle('Cookie-Editor');
     document.getElementById('button-bar-add').classList.remove('active');
     document.getElementById('button-bar-import').classList.remove('active');
+    document.getElementById('button-bar-profiles').classList.remove('active');
     document.getElementById('button-bar-default').classList.add('active');
     document.myThing = 'DarkSide';
     const domain = getDomainFromUrl(cookieHandler.currentTab.url);
@@ -998,6 +1021,487 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
         onCookiesChanged();
       }
     });
+  }
+
+  /**
+   * Returns the domain used to group saved account profiles for the current
+   * tab. Falls back to an empty string when no tab is available.
+   * @return {string} Domain for the current tab, or an empty string.
+   */
+  function getCurrentProfileDomain() {
+    if (!cookieHandler.currentTab) {
+      return '';
+    }
+    return getDomainFromUrl(cookieHandler.currentTab.url) || '';
+  }
+
+  /**
+   * Displays the accounts/profiles management panel.
+   * @return {Promise<void>}
+   */
+  async function showProfilesPanel() {
+    if (!cookieHandler.currentTab) {
+      return;
+    }
+
+    setPageTitle('Cookie-Editor - Accounts');
+    document.getElementById('button-bar-default').classList.remove('active');
+    document.getElementById('button-bar-add').classList.remove('active');
+    document.getElementById('button-bar-import').classList.remove('active');
+    document.getElementById('button-bar-profiles').classList.add('active');
+
+    const html = await buildProfilesPanelHtml();
+
+    if (containerCookie.firstChild) {
+      disableButtons = true;
+      Animate.transitionPage(
+        containerCookie,
+        containerCookie.firstChild,
+        html,
+        'left',
+        () => {
+          disableButtons = false;
+        },
+        optionHandler.getAnimationsEnabled()
+      );
+    } else {
+      containerCookie.appendChild(html);
+    }
+  }
+
+  /**
+   * Builds the HTML for the accounts panel, listing all profiles saved for
+   * the current domain.
+   * @return {Promise<HTMLElement>} The panel element to insert into the view.
+   */
+  async function buildProfilesPanelHtml() {
+    const fragment = document.importNode(
+      document.getElementById('tmp-profiles').content,
+      true
+    );
+    const panel = fragment.querySelector('.profiles-panel');
+    const titleEl = panel.querySelector('.profiles-title');
+    const listEl = panel.querySelector('.profiles-list');
+    const emptyEl = panel.querySelector('.profiles-empty');
+
+    const domain = getCurrentProfileDomain();
+    titleEl.textContent = domain
+      ? `Saved accounts for ${domain}`
+      : 'Saved accounts';
+
+    wireProfileSavePane(panel);
+
+    const profiles = domain
+      ? await profileHandler.getProfilesForDomain(domain)
+      : [];
+
+    if (!profiles.length) {
+      emptyEl.style.display = 'block';
+      listEl.style.display = 'none';
+    } else {
+      emptyEl.style.display = 'none';
+      listEl.style.display = 'block';
+      for (const profile of profiles) {
+        listEl.appendChild(buildProfileItem(profile));
+      }
+    }
+
+    return panel;
+  }
+
+  /**
+   * Wires the event listeners for the inline "save account" pane.
+   * @param {HTMLElement} panel The profiles panel root element.
+   */
+  function wireProfileSavePane(panel) {
+    const savePane = panel.querySelector('.profile-save-pane');
+    if (!savePane) {
+      return;
+    }
+    const input = savePane.querySelector('.profile-name-input');
+    const submitBtn = savePane.querySelector('.profile-save-submit');
+    const submitClearBtn = savePane.querySelector('.profile-save-submit-clear');
+    const cancelBtn = savePane.querySelector('.profile-save-cancel');
+
+    submitBtn.addEventListener('click', () => {
+      handleSaveProfile(input.value, false);
+    });
+    submitClearBtn.addEventListener('click', () => {
+      handleSaveProfile(input.value, true);
+    });
+    cancelBtn.addEventListener('click', () => {
+      hideProfileSavePane();
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSaveProfile(input.value, false);
+      } else if (e.key === 'Escape') {
+        hideProfileSavePane();
+      }
+    });
+  }
+
+  /**
+   * Toggles the visibility of the inline "save account" pane and focuses
+   * the name input when it becomes visible.
+   */
+  function toggleProfileSavePane() {
+    const pane = document.querySelector('.profile-save-pane');
+    if (!pane) {
+      return;
+    }
+    if (pane.hidden) {
+      pane.hidden = false;
+      const input = pane.querySelector('.profile-name-input');
+      if (input) {
+        input.value = `Account ${new Date().toLocaleDateString()}`;
+        input.focus();
+        input.select();
+      }
+    } else {
+      hideProfileSavePane();
+    }
+  }
+
+  /**
+   * Hides the inline "save account" pane.
+   */
+  function hideProfileSavePane() {
+    const pane = document.querySelector('.profile-save-pane');
+    if (pane) {
+      pane.hidden = true;
+      const input = pane.querySelector('.profile-name-input');
+      if (input) {
+        input.value = '';
+      }
+    }
+  }
+
+  /**
+   * Builds a single profile row element.
+   * @param {object} profile Profile data to render.
+   * @return {HTMLElement} The list item element.
+   */
+  function buildProfileItem(profile) {
+    const fragment = document.importNode(
+      document.getElementById('tmp-profile-item').content,
+      true
+    );
+    const li = fragment.querySelector('.profile-item');
+    li.dataset.id = profile.id;
+    li.querySelector('.profile-name').textContent = profile.name;
+
+    const cookieCount = Array.isArray(profile.cookies)
+      ? profile.cookies.length
+      : 0;
+    const created = profile.createdAt
+      ? new Date(profile.createdAt).toLocaleDateString()
+      : '';
+    const metaParts = [];
+    metaParts.push(cookieCount === 1 ? '1 cookie' : `${cookieCount} cookies`);
+    if (created) {
+      metaParts.push(created);
+    }
+    li.querySelector('.profile-meta').textContent = metaParts.join(' • ');
+
+    li.querySelector('.profile-load').addEventListener('click', () => {
+      handleLoadProfile(profile.id);
+    });
+    li.querySelector('.profile-rename').addEventListener('click', () => {
+      handleRenameProfile(li, profile);
+    });
+    li.querySelector('.profile-delete').addEventListener('click', () => {
+      handleDeleteProfile(li, profile);
+    });
+
+    return li;
+  }
+
+  /**
+   * Saves the current set of cookies for the current domain as a new profile.
+   * @param {string} rawName The name entered by the user.
+   * @param {boolean} alsoClear When true, all cookies are deleted after the
+   *     save completes, so the user can log into another account without
+   *     logging out server-side.
+   * @return {Promise<void>}
+   */
+  async function handleSaveProfile(rawName, alsoClear) {
+    const domain = getCurrentProfileDomain();
+    if (!domain) {
+      sendNotification('Cannot save an account for this page.');
+      return;
+    }
+
+    const name = (rawName || '').trim();
+    if (!name) {
+      sendNotification('A name is required to save an account.');
+      return;
+    }
+
+    let cookies;
+    try {
+      cookies = await new Promise(resolve => {
+        cookieHandler.getAllCookies(resolve);
+      });
+    } catch (error) {
+      console.error('Failed to read cookies for profile', error);
+      sendNotification('Could not read cookies to save this account.');
+      return;
+    }
+
+    if (!cookies || cookies.length === 0) {
+      sendNotification('No cookies to save for this page.');
+      return;
+    }
+
+    try {
+      await profileHandler.saveProfile(domain, name, cookies);
+    } catch (error) {
+      console.error('Failed to save profile', error);
+      sendNotification(error.message || 'Failed to save account.');
+      return;
+    }
+
+    hideProfileSavePane();
+
+    if (alsoClear) {
+      await clearAllCurrentCookies(cookies);
+      sendNotification(`Saved "${name}" and cleared cookies.`);
+    } else {
+      sendNotification(`Account "${name}" saved.`);
+    }
+
+    await refreshProfilesPanel();
+  }
+
+  /**
+   * Restores a saved profile's cookies, replacing the current cookies for
+   * the domain and reloading the active tab so the new session is picked up.
+   * @param {string} profileId Id of the profile to load.
+   * @return {Promise<void>}
+   */
+  async function handleLoadProfile(profileId) {
+    const domain = getCurrentProfileDomain();
+    if (!domain) {
+      return;
+    }
+    const profile = await profileHandler.getProfile(domain, profileId);
+    if (!profile) {
+      sendNotification('Account not found.');
+      return;
+    }
+
+    let currentCookies;
+    try {
+      currentCookies = await new Promise(resolve => {
+        cookieHandler.getAllCookies(resolve);
+      });
+    } catch (error) {
+      console.error('Failed to read current cookies', error);
+      currentCookies = [];
+    }
+
+    await clearAllCurrentCookies(currentCookies || []);
+
+    const savedCookies = Array.isArray(profile.cookies) ? profile.cookies : [];
+    if (!savedCookies.length) {
+      sendNotification(`"${profile.name}" has no cookies to restore.`);
+      return;
+    }
+
+    const targetUrl = getCurrentTabUrl();
+    let failed = 0;
+    await Promise.all(
+      savedCookies.map(
+        cookie =>
+          new Promise(resolve => {
+            const clone = { ...cookie };
+            if (clone.sameSite === 'unspecified') {
+              clone.sameSite = null;
+            }
+            clone.storeId = cookieHandler.currentTab.cookieStoreId;
+            try {
+              cookieHandler.saveCookie(clone, targetUrl, error => {
+                if (error) {
+                  failed += 1;
+                  console.warn('Failed to restore cookie', clone.name, error);
+                }
+                resolve();
+              });
+            } catch (error) {
+              failed += 1;
+              console.warn('Failed to restore cookie', clone.name, error);
+              resolve();
+            }
+          })
+      )
+    );
+
+    if (failed) {
+      sendNotification(
+        `Loaded "${profile.name}" (${failed} cookies could not be restored).`
+      );
+    } else {
+      sendNotification(`Loaded "${profile.name}".`);
+    }
+
+    reloadCurrentTab();
+  }
+
+  /**
+   * Handles a click on the delete button for a profile. The first click
+   * primes a confirmation state; a second click within 3 seconds actually
+   * removes the profile.
+   * @param {HTMLElement} listItem The list item element for the profile.
+   * @param {object} profile Profile to delete.
+   * @return {Promise<void>}
+   */
+  async function handleDeleteProfile(listItem, profile) {
+    if (!listItem.classList.contains('confirm-delete')) {
+      listItem.classList.add('confirm-delete');
+      const deleteBtn = listItem.querySelector('.profile-delete');
+      deleteBtn.setAttribute('aria-label', 'Click again to confirm delete');
+      const iconUse = deleteBtn.querySelector('use');
+      if (iconUse) {
+        iconUse.setAttribute('href', '../sprites/solid.svg#check');
+      }
+      const timeoutId = setTimeout(() => {
+        listItem.classList.remove('confirm-delete');
+        deleteBtn.setAttribute('aria-label', 'Delete saved account');
+        if (iconUse) {
+          iconUse.setAttribute('href', '../sprites/solid.svg#trash');
+        }
+        delete listItem.dataset.confirmTimeout;
+      }, 3000);
+      listItem.dataset.confirmTimeout = timeoutId;
+      return;
+    }
+    if (listItem.dataset.confirmTimeout) {
+      clearTimeout(Number(listItem.dataset.confirmTimeout));
+      delete listItem.dataset.confirmTimeout;
+    }
+    await profileHandler.deleteProfile(profile.domain, profile.id);
+    sendNotification(`Removed "${profile.name}".`);
+    await refreshProfilesPanel();
+  }
+
+  /**
+   * Turns the profile name into an inline editable input so the user can
+   * rename the profile without the popup closing.
+   * @param {HTMLElement} listItem The list item element for the profile.
+   * @param {object} profile Profile to rename.
+   */
+  function handleRenameProfile(listItem, profile) {
+    const nameEl = listItem.querySelector('.profile-name');
+    const inputEl = listItem.querySelector('.profile-name-edit');
+    if (!nameEl || !inputEl) {
+      return;
+    }
+
+    inputEl.value = profile.name;
+    inputEl.hidden = false;
+    nameEl.hidden = true;
+    inputEl.focus();
+    inputEl.select();
+
+    const commit = async () => {
+      inputEl.removeEventListener('blur', onBlur);
+      inputEl.removeEventListener('keydown', onKey);
+      const newName = inputEl.value.trim();
+      inputEl.hidden = true;
+      nameEl.hidden = false;
+      if (!newName || newName === profile.name) {
+        return;
+      }
+      try {
+        await profileHandler.renameProfile(profile.domain, profile.id, newName);
+      } catch (error) {
+        console.error('Failed to rename profile', error);
+        sendNotification(error.message || 'Failed to rename account.');
+        return;
+      }
+      sendNotification(`Renamed to "${newName}".`);
+      await refreshProfilesPanel();
+    };
+
+    const cancel = () => {
+      inputEl.removeEventListener('blur', onBlur);
+      inputEl.removeEventListener('keydown', onKey);
+      inputEl.hidden = true;
+      nameEl.hidden = false;
+    };
+
+    const onKey = e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      } else if (e.key === 'Escape') {
+        cancel();
+      }
+    };
+
+    const onBlur = () => {
+      commit();
+    };
+
+    inputEl.addEventListener('blur', onBlur);
+    inputEl.addEventListener('keydown', onKey);
+  }
+
+  /**
+   * Rebuilds the accounts panel if it is currently visible.
+   * @return {Promise<void>}
+   */
+  async function refreshProfilesPanel() {
+    const bar = document.getElementById('button-bar-profiles');
+    if (!bar || !bar.classList.contains('active')) {
+      return;
+    }
+    const newPanel = await buildProfilesPanelHtml();
+    clearChildren(containerCookie);
+    containerCookie.appendChild(newPanel);
+  }
+
+  /**
+   * Removes every given cookie from the browser for the current tab.
+   * @param {Array<object>} cookies Cookies to remove.
+   * @return {Promise<void>}
+   */
+  async function clearAllCurrentCookies(cookies) {
+    if (!cookies || !cookies.length) {
+      return;
+    }
+    const url = getCurrentTabUrl();
+    await Promise.all(
+      cookies.map(
+        cookie =>
+          new Promise(resolve => {
+            try {
+              cookieHandler.removeCookie(cookie.name, url, () => resolve());
+            } catch (error) {
+              console.warn('Failed to remove cookie', cookie.name, error);
+              resolve();
+            }
+          })
+      )
+    );
+  }
+
+  /**
+   * Reloads the current tab, used after switching account profiles so the
+   * site picks up the new cookies.
+   */
+  function reloadCurrentTab() {
+    try {
+      const api = browserDetector.getApi();
+      if (!cookieHandler.currentTab || !api.tabs || !api.tabs.reload) {
+        return;
+      }
+      api.tabs.reload(cookieHandler.currentTab.id);
+    } catch (error) {
+      console.warn('Failed to reload tab', error);
+    }
   }
 
   /**

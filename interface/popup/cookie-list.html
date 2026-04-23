@@ -104,6 +104,51 @@
             <div class="tooltip" role="tooltip">Export</div>
           </div>
         </button>
+        <div class="panel-section-footer-separator"></div>
+
+        <button
+          class="panel-section-footer-button"
+          id="open-profiles"
+          type="button"
+        >
+          <div>
+            <svg class="icon">
+              <use href="../sprites/solid.svg#users"></use>
+            </svg>
+            <div class="tooltip" role="tooltip">Accounts</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel button-bar" id="button-bar-profiles">
+      <div class="panel-section panel-section-footer">
+        <button
+          class="panel-section-footer-button"
+          id="return-list-profiles"
+          type="button"
+        >
+          <div>
+            <svg class="icon">
+              <use href="../sprites/solid.svg#arrow-left"></use>
+            </svg>
+            <div class="tooltip" role="tooltip">Back</div>
+          </div>
+        </button>
+        <div class="panel-section-footer-separator"></div>
+
+        <button
+          class="panel-section-footer-button primary"
+          id="save-profile"
+          type="button"
+        >
+          <div>
+            <svg class="icon">
+              <use href="../sprites/solid.svg#save"></use>
+            </svg>
+            <div class="tooltip" role="tooltip">Save current account</div>
+          </div>
+        </button>
       </div>
     </div>
 
@@ -350,6 +395,91 @@
           <textarea name="value" id="value-create"></textarea>
         </div>
       </form>
+    </template>
+
+    <template id="tmp-profiles">
+      <div class="container profiles-panel">
+        <h2 class="profiles-title"></h2>
+        <div class="profile-save-pane" hidden>
+          <label for="profile-name-input" class="profile-save-label">
+            Name this account
+          </label>
+          <input
+            type="text"
+            id="profile-name-input"
+            class="profile-name-input"
+            placeholder="e.g. Account 1"
+            maxlength="80"
+          />
+          <div class="profile-save-actions">
+            <button
+              type="button"
+              class="profile-save-cancel"
+              aria-label="Cancel"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="profile-save-submit"
+              aria-label="Save this account"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              class="profile-save-submit-clear"
+              aria-label="Save this account and clear cookies"
+            >
+              Save &amp; clear
+            </button>
+          </div>
+        </div>
+        <ul class="profiles-list"></ul>
+        <p class="profiles-empty">
+          No accounts saved for this site yet. Click the
+          <strong>Save</strong> button below to store the current session.
+        </p>
+      </div>
+    </template>
+
+    <template id="tmp-profile-item">
+      <li class="profile-item" data-id="">
+        <div class="profile-info">
+          <span class="profile-name"></span>
+          <input class="profile-name-edit" type="text" maxlength="80" hidden />
+          <span class="profile-meta"></span>
+        </div>
+        <div class="profile-actions">
+          <button
+            class="profile-load"
+            aria-label="Load account"
+            type="button"
+          >
+            <svg class="icon">
+              <use href="../sprites/solid.svg#sign-in-alt"></use>
+            </svg>
+          </button>
+          <button
+            class="profile-rename"
+            aria-label="Rename account"
+            type="button"
+          >
+            <svg class="icon">
+              <use href="../sprites/solid.svg#pen"></use>
+            </svg>
+          </button>
+          <button
+            class="profile-delete"
+            aria-label="Delete saved account"
+            type="button"
+          >
+            <svg class="icon">
+              <use href="../sprites/solid.svg#trash"></use>
+            </svg>
+          </button>
+        </div>
+      </li>
     </template>
 
     <template id="tmp-empty">
