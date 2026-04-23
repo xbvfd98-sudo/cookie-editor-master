@@ -605,6 +605,189 @@ body,
   display: red !important;
 }
 
+.profiles-panel {
+  padding-bottom: 8px;
+}
+
+.profiles-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 4px 0 8px;
+  color: var(--primary-text-color);
+  word-break: break-all;
+}
+
+.profiles-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: block;
+}
+
+.profile-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--primary-border-color);
+  gap: 8px;
+}
+
+.profile-item:last-child {
+  border-bottom: none;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.profile-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--primary-text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-meta {
+  font-size: 11px;
+  color: var(--secondary-text-color);
+  margin-top: 2px;
+}
+
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.profile-actions button {
+  background: none;
+  border: 1px solid transparent;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--primary-text-color);
+  transition: all 150ms ease;
+}
+
+.profile-actions button:hover,
+.profile-actions button:focus {
+  background-color: rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-outline-color);
+}
+
+.profile-actions button.profile-load:hover svg,
+.profile-actions button.profile-load:focus svg {
+  fill: var(--primary-safe-color);
+}
+
+.profile-actions button.profile-delete:hover,
+.profile-actions button.profile-delete:focus {
+  background-color: var(--button-danger-surface-color);
+}
+
+.profiles-empty {
+  padding: 16px 4px;
+  font-size: 12px;
+  color: var(--secondary-text-color);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.profile-save-pane {
+  padding: 8px;
+  margin-bottom: 10px;
+  background-color: var(--secondary-surface-color);
+  border: 1px solid var(--primary-border-color);
+  border-radius: 6px;
+}
+
+.profile-save-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--primary-text-color);
+}
+
+.profile-name-input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 1px solid var(--primary-border-color);
+  border-radius: 4px;
+  background-color: var(--primary-surface-color);
+  color: var(--primary-text-color);
+  box-sizing: border-box;
+}
+
+.profile-save-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.profile-save-actions button {
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid var(--primary-outline-color);
+  background-color: var(--secondary-surface-color);
+  color: var(--primary-text-color);
+  transition: all 150ms ease;
+}
+
+.profile-save-actions button:hover,
+.profile-save-actions button:focus {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.profile-save-actions .profile-save-submit {
+  background-color: var(--button-primary-surface-color);
+  color: var(--button-primary-text-color);
+  border-color: var(--button-primary-surface-color);
+}
+
+.profile-save-actions .profile-save-submit:hover,
+.profile-save-actions .profile-save-submit:focus {
+  filter: brightness(1.05);
+}
+
+.profile-save-actions .profile-save-submit-clear {
+  background-color: var(--button-danger-surface-color);
+  color: var(--primary-text-color);
+}
+
+.profile-name-edit {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--primary-border-color);
+  border-radius: 4px;
+  background-color: var(--primary-surface-color);
+  color: var(--primary-text-color);
+  box-sizing: border-box;
+}
+
+.profile-item.confirm-delete {
+  background-color: rgba(220, 53, 69, 0.08);
+}
+
+.profile-item.confirm-delete .profile-delete {
+  background-color: var(--button-danger-surface-color);
+  border-color: var(--primary-outline-color);
+}
+
 .panel-section-footer-button > div {
   text-align: center;
   transition: transform 100ms ease;
